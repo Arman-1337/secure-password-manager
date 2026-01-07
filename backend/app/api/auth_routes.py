@@ -2,6 +2,7 @@
 Authentication API Endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 
@@ -16,6 +17,44 @@ from backend.app.security.encryption import EncryptionEngine
 from backend.app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+# ============= SECURITY & CURRENT USER (MUST BE BEFORE ENDPOINTS) =============
+
+security = HTTPBearer()
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> User:
+    """Get current authenticated user from JWT token."""
+    
+    token = credentials.credentials
+    
+    # Verify token
+    payload = AuthManager.verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+    
+    # Get user
+    user_email = payload.get("sub")
+    user = db.query(User).filter(User.email == user_email).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    
+    return user
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -178,42 +217,44 @@ def disable_2fa(
     
     return {"message": "2FA disabled successfully"}
 
-# ============= DEPENDENCY FOR GETTING CURRENT USER =============
+# # ============= DEPENDENCY FOR GETTING CURRENT USER =============
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+# from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-security = HTTPBearer()
+# security = HTTPBearer()
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
-) -> User:
-    """Get current authenticated user from JWT token."""
+# def get_current_user(
+#     credentials: HTTPAuthorizationCredentials = Depends(security),
+#     db: Session = Depends(get_db)
+# ) -> User:
+#     """Get current authenticated user from JWT token."""
     
-    token = credentials.credentials
+#     token = credentials.credentials
     
-    # Verify token
-    payload = AuthManager.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
+#     # Verify token
+#     payload = AuthManager.verify_token(token)
+#     if not payload:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid or expired token"
+#         )
     
-    # Get user
-    user_email = payload.get("sub")
-    user = db.query(User).filter(User.email == user_email).first()
+#     # Get user
+#     user_email = payload.get("sub")
+#     user = db.query(User).filter(User.email == user_email).first()
     
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="User not found"
+#         )
     
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
-        )
+#     if not user.is_active:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="User account is inactive"
+#         )
     
-    return user
+#     return user
+
+# so we needed to shift this part up cuz it needed to be called before endpoints
