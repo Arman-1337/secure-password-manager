@@ -11,7 +11,7 @@ import io
 import base64
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 # JWT settings
 SECRET_KEY = "your-secret-key-change-this-in-production-make-it-very-long-and-random-123456789"
@@ -24,6 +24,9 @@ class AuthManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash a password using bcrypt."""
+        # Truncate to 72 bytes (bcrypt limit)
+        if len(password.encode()) > 72:
+            password = password[:72]
         return pwd_context.hash(password)
     
     @staticmethod
