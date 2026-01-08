@@ -578,7 +578,7 @@ This password manager is built with security best practices but:
 
 **⭐ Star this repo if you find it useful! ⭐**
 
-Made with ❤️ and 🔐 by [Arman Bin Tahir](https://github.com/Arman-1337)
+Made by [Arman Bin Tahir](https://github.com/Arman-1337)
 
 **Securing passwords, one encryption at a time.**
 
